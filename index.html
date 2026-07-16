@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schedule a Meeting — Andreea Constantin, Apple</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    background: #000; color: #f5f5f7; min-height: 100vh; padding: 40px 20px;
+}
+.container { max-width: 720px; margin: 0 auto; }
+header { text-align: center; margin-bottom: 40px; }
+header h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 8px; }
+header p { font-size: 15px; color: #86868b; line-height: 1.5; }
+.badge { display: inline-block; background: #111; border: 1px solid #333; border-radius: 20px;
+    padding: 6px 16px; font-size: 13px; color: #86868b; margin-top: 12px; }
+.day-section { margin-bottom: 28px; }
+.day-header { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    color: #86868b; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #222; }
+.slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.slot { padding: 12px 14px; border-radius: 10px; font-size: 14px; font-weight: 500; text-align: center;
+    transition: all 0.2s ease; }
+.slot.available { background: #0a2a0a; border: 1px solid #1a4a1a; color: #34c759; cursor: pointer; }
+.slot.available:hover { background: #1a4a1a; transform: scale(1.02); }
+.slot.unavailable { background: #111; border: 1px solid #222; color: #444; cursor: not-allowed; }
+.slot.selected { background: #0071e3; border: 1px solid #0077ed; color: #fff; transform: scale(1.03); }
+.booking-form { display: none; background: #111; border: 1px solid #333; border-radius: 14px;
+    padding: 28px; margin-top: 28px; }
+.booking-form.visible { display: block; }
+.booking-form h2 { font-size: 18px; margin-bottom: 16px; }
+.selected-display { background: #0a2a0a; border: 1px solid #1a4a1a; border-radius: 8px;
+    padding: 10px 14px; color: #34c759; font-size: 14px; font-weight: 500; margin-bottom: 16px; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; color: #86868b; margin-bottom: 4px; }
+.form-group input { width: 100%; padding: 10px 14px; background: #1a1a1a; border: 1px solid #333;
+    border-radius: 8px; color: #f5f5f7; font-size: 14px; outline: none; }
+.form-group input:focus { border-color: #0071e3; }
+.btn-submit { width: 100%; padding: 12px; background: #0071e3; border: none; border-radius: 10px;
+    color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+.btn-submit:hover { background: #0077ed; }
+.confirmation { display: none; text-align: center; padding: 40px 28px; background: #111;
+    border: 1px solid #1a4a1a; border-radius: 14px; margin-top: 28px; }
+.confirmation.visible { display: block; }
+.confirmation h2 { color: #34c759; margin-bottom: 10px; font-size: 20px; }
+.confirmation p { color: #86868b; line-height: 1.6; font-size: 14px; }
+footer { text-align: center; margin-top: 40px; color: #444; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Schedule a Business Review</h1>
+        <p>Choose a time slot that works for you.<br>All times are Romania time (EEST, UTC+3).</p>
+        <div class="badge">Q4 FY25 · 60 min · Andreea Constantin, Apple</div>
+    </header>
+    <div id="calendar-slots"></div>
+    <form id="booking-form" class="booking-form" onsubmit="submitBooking(event)">
+        <h2>Confirm Your Selection</h2>
+        <div class="selected-display" id="selected-slot-text"></div>
+        <div class="form-group">
+            <label>Your Name</label>
+            <input type="text" id="guest-name" placeholder="e.g. Ion Popescu" required>
+        </div>
+        <div class="form-group">
+            <label>Your Email</label>
+            <input type="email" id="guest-email" placeholder="e.g. ion.popescu@orange.ro" required>
+        </div>
+        <button type="submit" class="btn-submit">Send Booking Request →</button>
+    </form>
+    <div id="confirmation" class="confirmation">
+        <h2>✓ Request Sent</h2>
+        <p>Your request for <strong id="conf-slot"></strong> has been sent to Andreea.<br>
+        You will receive a calendar invitation with the meeting link once confirmed.</p>
+    </div>
+    <footer>Apple Excellence Program</footer>
+</div>
+<script>
+const CONFIG = {
+    ownerEmail: "andreea_constantin@apple.com",
+    meetingType: "Business Review",
+    slotDuration: 60,
+    // Date range: only show these specific dates (Mi/Jo/Vi from next 2 weeks)
+    dates: ["2026-07-17","2026-07-22","2026-07-23","2026-07-24","2026-07-29","2026-07-30"],
+    startHour: 9,
+    endHour: 15,
+    busySlots: [
+        "2026-07-17T09:00|2026-07-17T10:00",
+        "2026-07-17T09:30|2026-07-17T10:30",
+        "2026-07-17T11:00|2026-07-17T12:00",
+        "2026-07-22T08:30|2026-07-22T09:30",
+        "2026-07-22T09:00|2026-07-22T10:00",
+        "2026-07-22T10:30|2026-07-22T11:00",
+        "2026-07-22T13:00|2026-07-22T14:00",
+        "2026-07-22T14:00|2026-07-22T15:00",
+        "2026-07-23T08:30|2026-07-23T09:30",
+        "2026-07-23T09:30|2026-07-23T10:00",
+        "2026-07-23T12:00|2026-07-23T13:00",
+        "2026-07-24T09:00|2026-07-24T10:30",
+        "2026-07-25T11:00|2026-07-25T11:30",
+        "2026-07-25T12:00|2026-07-25T13:00",
+        "2026-07-27T09:00|2026-07-27T11:00",
+        "2026-07-27T11:00|2026-07-27T13:00",
+        "2026-07-27T13:00|2026-07-27T15:00",
+        "2026-07-28T09:00|2026-07-28T11:00",
+        "2026-07-28T11:00|2026-07-28T13:00",
+        "2026-07-28T13:00|2026-07-28T16:00",
+        "2026-07-29T09:00|2026-07-29T10:00",
+        "2026-07-29T11:00|2026-07-29T12:00",
+        "2026-07-30T08:30|2026-07-30T10:00",
+        "2026-07-30T11:00|2026-07-30T11:30"
+    ]
+};
+
+let selectedSlot = null;
+const dayNames = {0:'Sunday',1:'Monday',2:'Tuesday',3:'Wednesday',4:'Thursday',5:'Friday',6:'Saturday'};
+const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function generateSlots() {
+    const container = document.getElementById('calendar-slots');
+    CONFIG.dates.forEach(dateStr => {
+        const d = new Date(dateStr + 'T12:00:00');
+        const section = document.createElement('div');
+        section.className = 'day-section';
+        const label = `${dayNames[d.getDay()]}, ${d.getDate()} ${monthNames[d.getMonth()]}`;
+        section.innerHTML = `<div class="day-header">${label}</div>`;
+        const grid = document.createElement('div');
+        grid.className = 'slots-grid';
+        for (let h = CONFIG.startHour; h < CONFIG.endHour; h++) {
+            const busy = isBusy(dateStr, h, h + 1);
+            const slot = document.createElement('div');
+            slot.className = `slot ${busy ? 'unavailable' : 'available'}`;
+            slot.textContent = `${String(h).padStart(2,'0')}:00 – ${String(h+1).padStart(2,'0')}:00`;
+            if (!busy) {
+                slot.dataset.date = dateStr;
+                slot.dataset.time = `${String(h).padStart(2,'0')}:00`;
+                slot.dataset.display = `${label}, ${String(h).padStart(2,'0')}:00 – ${String(h+1).padStart(2,'0')}:00`;
+                slot.onclick = () => selectSlot(slot);
+            }
+            grid.appendChild(slot);
+        }
+        section.appendChild(grid);
+        container.appendChild(section);
+    });
+}
+
+function isBusy(dateStr, startH, endH) {
+    const slotS = startH * 60, slotE = endH * 60;
+    return CONFIG.busySlots.some(b => {
+        const [bs, be] = b.split('|');
+        if (!bs.startsWith(dateStr)) return false;
+        const bsM = parseInt(bs.slice(11,13))*60 + parseInt(bs.slice(14,16));
+        const beM = be ? parseInt(be.slice(11,13))*60 + parseInt(be.slice(14,16)) : bsM+60;
+        return bsM < slotE && beM > slotS;
+    });
+}
+
+function selectSlot(el) {
+    document.querySelectorAll('.slot.selected').forEach(s => { s.classList.remove('selected'); s.classList.add('available'); });
+    el.classList.remove('available'); el.classList.add('selected');
+    selectedSlot = { date: el.dataset.date, time: el.dataset.time, display: el.dataset.display };
+    const form = document.getElementById('booking-form');
+    form.classList.add('visible');
+    document.getElementById('selected-slot-text').textContent = '📅 ' + selectedSlot.display;
+    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function submitBooking(e) {
+    e.preventDefault();
+    const name = document.getElementById('guest-name').value.trim();
+    const email = document.getElementById('guest-email').value.trim();
+    if (!name || !email || !selectedSlot) return;
+    const subject = encodeURIComponent(`[Booking] ${CONFIG.meetingType} – ${selectedSlot.display}`);
+    const body = encodeURIComponent(
+        `Hi Andreea,\n\nI'd like to book:\n\n` +
+        `📅 ${selectedSlot.display}\n📋 ${CONFIG.meetingType}\n👤 ${name}\n📧 ${email}\n\n` +
+        `Please confirm and send the meeting invitation.\n\nThank you!`
+    );
+    window.location.href = `mailto:${CONFIG.ownerEmail}?subject=${subject}&body=${body}`;
+    document.getElementById('booking-form').classList.remove('visible');
+    const conf = document.getElementById('confirmation');
+    conf.classList.add('visible');
+    document.getElementById('conf-slot').textContent = selectedSlot.display;
+}
+
+generateSlots();
+</script>
+</body>
+</html>
