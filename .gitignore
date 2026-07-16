@@ -1,0 +1,5 @@
+-e .busy_slots.txt
+sync.log
+sync-error.log
+sync.sh
+com.andreea.booking-sync.plist
